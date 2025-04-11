@@ -9,8 +9,12 @@ license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
-    "elevenlabs[pyaudio] (>=1.56.0,<2.0.0)"
+    "elevenlabs[pyaudio] (>=1.56.0,<2.0.0)",
+    "python-dotenv (>=1.1.0,<2.0.0)"
 ]
+
+[tool.poetry.scripts]
+pirate_agent = 'agenticanimatronics.pirate_agent:run_pirate_agent'
 
 
 [build-system]
