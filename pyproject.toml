@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [tool.poetry.scripts]
-pirate_agent = 'agenticanimatronics.pirate_agent:run_pirate_agent'
+pirate-agent = 'agenticanimatronics.pirate_agent:run_pirate_agent'
 
 
 [build-system]

@@ -7,15 +7,25 @@ The purpose of this package is to provide ready to use characters for my dad to 
 halloween party.
 
 ## QUICKSTART
+Here is a quick start guide to running your agent
+As a prerequisite create an elevenlabs account: https://elevenlabs.io
+### installations
 1. install homebrew https://brew.sh
-2. brew install portaudio19
-3. install python3.12+ https://www.python.org/downloads/
-4. open terminal and type python3 --version (It should say python 3.12+)
-5. in terminal type and run brew install portaudio
-6. install poetry https://python-poetry.org/docs/#installing-with-the-official-installer
-7. in terminal type poetry (it should say something other than command not found)
-8. in terminal ensure AgenticAnimatronics is the current working directory
-9. type and run poetry install
-10. type and run poetry run pirate_agent
-11. control+c to exit the conversation
+2. install python3.12+ https://www.python.org/downloads/
+3. install poetry https://python-poetry.org/docs/#installing-with-the-official-installer
+4. open terminal and type: brew install portaudio19
+### Downloading this repository
+1. In terminal: cd ~/Documents
+2. In terminal: git clone https://github.com/samquiring/AgenticAnimatronics.git
+3. In terminal: cd ~/Documents/AgenticAnimatronics
+3. In terminal: poetry install
+4. In terminal: cp .env_example .env
+### Updating the .env file
+1. Open .env (it should be in Documents/AgenticAnimatronics/.env)
+2. go to https://elevenlabs.io/app/settings/api-keys and create an api key. Copy the key
+3. Paste the key into the .env file under ELEVENLABS_API_KEY (so ELEVENLABS_API_KEY=(your key))
+### Running the pirate agent
+1. In terminal: cd ~/Documents/AgenticAnimatronics
+2. In terminal: poetry run pirate-agent
+3. To exit out of the conversation In terminal: control+c (so hit the control button and c at the same time)
 
