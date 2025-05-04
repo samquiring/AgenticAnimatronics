@@ -7,10 +7,17 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.12,<4.0"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "elevenlabs[pyaudio] (>=1.56.0,<2.0.0)",
-    "python-dotenv (>=1.1.0,<2.0.0)"
+    "python-dotenv (>=1.1.0,<2.0.0)",
+    "litellm (>=1.67.6,<2.0.0)",
+    "opencv-python (>=4.11.0.86,<5.0.0.0)",
+    "assemblyai (>=0.40.2,<0.41.0)",
+    "dspy (>=2.6.22,<3.0.0)",
+    "pydub (>=0.25.1,<0.26.0)",
+    "noisereduce (>=3.0.3,<4.0.0)",
+    "ruff (>=0.11.8,<0.12.0)"
 ]
 
 [tool.poetry.scripts]

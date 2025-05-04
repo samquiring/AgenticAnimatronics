@@ -14,6 +14,7 @@ As a prerequisite create an elevenlabs account: https://elevenlabs.io
 2. install python3.12+ https://www.python.org/downloads/
 3. install poetry https://python-poetry.org/docs/#installing-with-the-official-installer
 4. open terminal and type: brew install portaudio19
+5. brew install ffmpeg
 ### Downloading this repository
 1. In terminal: cd ~/Documents
 2. In terminal: git clone https://github.com/samquiring/AgenticAnimatronics.git
