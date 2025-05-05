@@ -1,3 +1,4 @@
+import multiprocessing
 import threading
 import pyaudio
 import assemblyai as aai
@@ -31,21 +32,22 @@ class ConversationalAgent:
         self.pirate_agent = PirateAgent(eleven_labs_voice_id=eleven_labs_voice_id)
         self.image_analysis = ImageAnalysis()
         self.image_analysis_thread = None
+        self.queue = multiprocessing.Queue()
+        self.user_description = ""
 
     @staticmethod
     def on_open(session_opened: aai.RealtimeSessionOpened):
         print("Session ID:", session_opened.session_id)
 
     def on_data(self, transcript: aai.RealtimeTranscript):
-        # TODO: Convert to non-blocking
-        # if not self.image_analysis_thread:
-        #     self.image_analysis_thread = threading.Thread(
-        #         target=self.image_analysis.take_and_analyse_image(),
-        #         args=(),
-        #         daemon=True
-        #     )
-        #     self.image_analysis_thread.start()
-        #     print("Thread started")
+        if not self.image_analysis_thread:
+            self.image_analysis_thread = multiprocessing.Process(
+                target=self.image_analysis.take_and_analyse_image,
+                args=("",self.queue),
+                daemon=True
+            )
+            self.image_analysis_thread.start()
+            print("Thread started")
         if not transcript.text:
             return
 
@@ -53,12 +55,10 @@ class ConversationalAgent:
             # Create a thread
             if not self.pirate_agent_thread or not self.pirate_agent_thread.is_alive():
                 if self.image_analysis_thread and not self.image_analysis_thread.is_alive():
-                    user_description = self.image_analysis.analysis
-                else:
-                    user_description = ""
+                    self.user_description = self.queue.get()
                 self.pirate_agent_thread = threading.Thread(
                     target=self.pirate_agent.generate,
-                    args=(user_description, transcript.text),  # Function arguments
+                    args=(self.user_description, transcript.text),  # Function arguments
                     daemon=True  # Optional: makes thread exit when main program exits
                 )
                 self.pirate_agent_thread.start()

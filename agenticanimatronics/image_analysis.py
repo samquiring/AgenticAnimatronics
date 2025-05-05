@@ -11,10 +11,10 @@ class ImageAnalysis:
         self.prompt = prompt
         self.analysis = None
 
-    def take_and_analyse_image(self):
+    def take_and_analyse_image(self, s, queue):
         image_location = self.take_image()
         self.analysis = self.llm.explain_image(image_location, self.prompt)
-        return self.analysis
+        queue.put(self.analysis)
 
     @staticmethod
     def take_image(image_location="", image_name="photo.png"):
