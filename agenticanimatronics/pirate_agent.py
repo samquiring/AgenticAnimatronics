@@ -1,70 +1,111 @@
-
+import multiprocessing
+import threading
 import pyaudio
-from elevenlabs import ElevenLabs, stream, VoiceSettings
+import assemblyai as aai
 
-from agenticanimatronics.initializers import eleven_labs_key
-from agenticanimatronics.llm import LLMHandler
-from agenticanimatronics.pirate_chatbot_module import PirateChatBot
+from agenticanimatronics.image_analysis import ImageAnalysis
+from agenticanimatronics.initializers import assembly_ai_key
+from agenticanimatronics.mutable_microphone_stream import MutableMicrophoneStream
+from agenticanimatronics.llm_speech_responder import LLMSpeechResponder
+
+aai.settings.api_key = assembly_ai_key
 
 
 class PirateAgent:
-    def __init__(self, eleven_labs_voice_id):
-        self.llm = LLMHandler()
-        self.pirate_chatbot = PirateChatBot()
-        self.eleven_labs_voice_id = eleven_labs_voice_id
-        self.eleven_labs_client = ElevenLabs(api_key=eleven_labs_key)
-        self.conversation_history = []
-        self.interrupt_lock = False  # A lock to ignore user conversation while agent is speaking
-
+    def __init__(self, eleven_labs_voice_id="Myn1LuZgd2qPMOg9BNtC"):
+        self.transcriber = aai.RealtimeTranscriber(
+            sample_rate=16000,
+            on_data=self.on_data,
+            on_error=self.on_error,
+            on_open=self.on_open,
+            on_close=self.on_close,
+            end_utterance_silence_threshold=700,
+            disable_partial_transcripts=True
+        )
+        self.microphone_stream = MutableMicrophoneStream(sample_rate=16000)
+        self.user_transcript = []
+        self.pirate_agent_thread = None
         # Initialize audio playback components
         self.audio_player = pyaudio.PyAudio()
+        self.skipped_pirate_audio = True  # this ensures the last audio from the pirate isn't picked up
+        self.pirate_agent = LLMSpeechResponder(eleven_labs_voice_id=eleven_labs_voice_id)
+        self.image_analysis = ImageAnalysis()
+        self.image_analysis_thread = None
+        self.queue = multiprocessing.Queue()
+        self.user_description = ""
 
-    def text_to_speech_stream(self, text: str) -> bytes:
+    @staticmethod
+    def on_open(session_opened: aai.RealtimeSessionOpened):
+        print("Session ID:", session_opened.session_id)
+
+    def on_data(self, transcript: aai.RealtimeTranscript):
+        if not self.image_analysis_thread:
+            self.image_analysis_thread = multiprocessing.Process(
+                target=self.image_analysis.take_and_analyse_image,
+                args=("",self.queue),
+                daemon=True
+            )
+            self.image_analysis_thread.start()
+            print("Thread started")
+        if not transcript.text:
+            return
+
+        if isinstance(transcript, aai.RealtimeFinalTranscript):
+            # Create a thread
+            if not self.pirate_agent_thread or not self.pirate_agent_thread.is_alive():
+                if self.image_analysis_thread and not self.image_analysis_thread.is_alive():
+                    self.user_description = self.queue.get()
+                self.pirate_agent_thread = threading.Thread(
+                    target=self.pirate_agent.generate,
+                    args=(self.user_description, transcript.text),  # Function arguments
+                    daemon=True  # Optional: makes thread exit when main program exits
+                )
+                self.pirate_agent_thread.start()
+            else:
+                print("Pirate is still speaking")
+            print(f"User said: {transcript.text}")
+        else:
+            # For partial transcripts
+            print(transcript.text, end="\r")
+
+    @staticmethod
+    def on_error(error: aai.RealtimeError):
+        print("An error occurred:", error)
+
+    @staticmethod
+    def on_close():
+        print("Closing Session")
+
+    def transcribe(self):
         """
-        Convert text to speech using ElevenLabs API and return a stream of audio bytes.
+        Start transcribing audio from the microphone for a specified duration.
         """
-        print("Converting to speech")
+        self.transcriber.connect()
 
-        # Perform the text-to-speech conversion
-        response = self.eleven_labs_client.generate(
-            voice=self.eleven_labs_voice_id,
-            optimize_streaming_latency=3,
-            output_format="mp3_22050_32",
-            text=text,
-            stream=True,
-            voice_settings=VoiceSettings(
-                stability=0.5,  # A balanced setting for natural but consistent voice
-                similarity_boost=0.75,
-                style=0.0,
-                use_speaker_boost=True,
-                speed=1.0,
-            ),
-        )
-        return stream(response)
+        # Start streaming audio from the microphone
+        self.transcriber.stream(self.microphone_stream)
 
-    def update_conversational_history(self, user_response: str, assistant_response: str):
+        return ' '.join(self.user_transcript)
+
+    def cleanup(self):
         """
-        Update the conversation history with the user's input and the assistant's response.
+        Clean up resources when done.
         """
-        print("Updating conversational history")
-        self.conversation_history.append({"role": "user", "content": user_response})
-        self.conversation_history.append({"role": "assistant", "content": assistant_response})
+        if hasattr(self, 'audio_player') and self.audio_player:
+            self.audio_player.terminate()
 
-    def generate(self, user_description: str, user_response: str):
-        print(f"Generating response for user input: {user_response}")
 
-        # Get response from pirate chatbot
-        pirate_response = self.pirate_chatbot.forward(
-            history=self.conversation_history,
-            user_prompt=user_response,
-            user_description=user_description,
-        )
+# Example usage
+def run_pirate_agent():
+    agent = PirateAgent()
+    try:
+        print("Listening...")
+        result = agent.transcribe()
+        print(f"Final transcript: {result}")
+    finally:
+        agent.cleanup()
 
-        print(f"Pirate responds: {pirate_response}")
 
-        # Convert the response to speech and get the audio stream
-        # microphone_stream.mute()
-        self.text_to_speech_stream(pirate_response)
-        # microphone_stream.unmute()
-        # Update conversation history
-        self.update_conversational_history(user_response, pirate_response)
+if __name__ == "__main__":
+    run_pirate_agent()
+
