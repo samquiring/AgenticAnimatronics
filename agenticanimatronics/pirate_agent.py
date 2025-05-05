@@ -12,7 +12,7 @@ aai.settings.api_key = assembly_ai_key
 
 
 class PirateAgent:
-    def __init__(self, eleven_labs_voice_id="Myn1LuZgd2qPMOg9BNtC"):
+    def __init__(self, eleven_labs_voice_id="Myn1LuZgd2qPMOg9BNtC", image_prompt="Describe the person/people in this image"):
         self.transcriber = aai.RealtimeTranscriber(
             sample_rate=16000,
             on_data=self.on_data,
@@ -29,7 +29,7 @@ class PirateAgent:
         self.audio_player = pyaudio.PyAudio()
         self.skipped_pirate_audio = True  # this ensures the last audio from the pirate isn't picked up
         self.pirate_agent = LLMSpeechResponder(eleven_labs_voice_id=eleven_labs_voice_id)
-        self.image_analysis = ImageAnalysis()
+        self.image_analysis = ImageAnalysis(prompt=image_prompt)
         self.image_analysis_thread = None
         self.queue = multiprocessing.Queue()
         self.user_description = ""
