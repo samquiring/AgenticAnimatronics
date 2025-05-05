@@ -37,31 +37,31 @@ class ConversationalAgent:
         print("Session ID:", session_opened.session_id)
 
     def on_data(self, transcript: aai.RealtimeTranscript):
-        if not self.image_analysis_thread:
-            self.image_analysis_thread = threading.Thread(
-                target=self.image_analysis.take_and_analyse_image(),
-                args=(),
-                daemon=True
-            )
-            self.image_analysis_thread.start()
-            print("Thread started")
+        # TODO: Convert to non-blocking
+        # if not self.image_analysis_thread:
+        #     self.image_analysis_thread = threading.Thread(
+        #         target=self.image_analysis.take_and_analyse_image(),
+        #         args=(),
+        #         daemon=True
+        #     )
+        #     self.image_analysis_thread.start()
+        #     print("Thread started")
         if not transcript.text:
             return
 
         if isinstance(transcript, aai.RealtimeFinalTranscript):
             # Create a thread
-            # TODO: Convert to proper multithreading for non-blocking operation
-            # if not self.pirate_agent_thread or not self.pirate_agent_thread.is_alive():
-            #     if self.image_analysis_thread and not self.image_analysis_thread.is_alive():
-            #         user_description = self.image_analysis.analysis
-            #     else:
-            #         user_description = ""
-            #     self.pirate_agent_thread = threading.Thread(
-            #         target=self.pirate_agent.generate,
-            #         args=(user_description, transcript.text),  # Function arguments
-            #         daemon=True  # Optional: makes thread exit when main program exits
-            #     )
-            #     self.pirate_agent_thread.start()
+            if not self.pirate_agent_thread or not self.pirate_agent_thread.is_alive():
+                if self.image_analysis_thread and not self.image_analysis_thread.is_alive():
+                    user_description = self.image_analysis.analysis
+                else:
+                    user_description = ""
+                self.pirate_agent_thread = threading.Thread(
+                    target=self.pirate_agent.generate,
+                    args=(user_description, transcript.text),  # Function arguments
+                    daemon=True  # Optional: makes thread exit when main program exits
+                )
+                self.pirate_agent_thread.start()
             else:
                 print("Pirate is still speaking")
             print(f"User said: {transcript.text}")
