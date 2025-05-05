@@ -2,13 +2,14 @@
 
 ## ABOUT
 This package contains different Characters for use in animatronics. 
-These characters are built on speech to text, text to speech, and an LLM which writes the dialog.
+These characters are built on speech to text (assembly ai), text to speech (elevenlabs), and an LLM (dspy + gemini) which writes the dialog.
 The purpose of this package is to provide ready to use characters for my dad to implement in his 
 halloween party.
 
 ## QUICKSTART
 Here is a quick start guide to running your agent
-As a prerequisite create an elevenlabs account: https://elevenlabs.io
+As a prerequisite create an elevenlabs account, google ai account and assembly ai account: 
+https://elevenlabs.io, https://aistudio.google.com/, https://www.assemblyai.com
 ### installations
 1. install homebrew https://brew.sh
 2. install python3.12+ https://www.python.org/downloads/
@@ -23,8 +24,9 @@ As a prerequisite create an elevenlabs account: https://elevenlabs.io
 4. In terminal: cp .env_example .env
 ### Updating the .env file
 1. Open .env (it should be in Documents/AgenticAnimatronics/.env)
-2. go to https://elevenlabs.io/app/settings/api-keys and create an api key. Copy the key
-3. Paste the key into the .env file under ELEVENLABS_API_KEY (so ELEVENLABS_API_KEY=(your key))
+2. go to https://elevenlabs.io/app/settings/api-keys and create an api key. Copy the key and paste into the .env file under ELEVENLABS_API_KEY
+3. go to https://aistudio.google.com/ and create an api key. Copy the key and paste into the .env file under GEMINI_API_KEY
+4. go to https://www.assemblyai.com/docs/api-reference/overview and create an api key. Copy the key and paste into .env file ASSEMBLY_AI_API_KEY
 ### Running the pirate agent
 1. In terminal: cd ~/Documents/AgenticAnimatronics
 2. In terminal: poetry run pirate-agent
