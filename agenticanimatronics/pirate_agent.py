@@ -53,7 +53,7 @@ class PirateAgent:
         if isinstance(transcript, aai.RealtimeFinalTranscript):
             # Create a thread
             if not self.pirate_agent_thread or not self.pirate_agent_thread.is_alive():
-                if self.image_analysis_thread and not self.image_analysis_thread.is_alive():
+                if self.image_analysis_thread and not self.image_analysis_thread.is_alive() and not self.user_description:
                     self.user_description = self.queue.get()
                 self.pirate_agent_thread = threading.Thread(
                     target=self.pirate_agent.generate,
