@@ -7,6 +7,7 @@ from agenticanimatronics.image_analysis import ImageAnalysis
 from agenticanimatronics.initializers import assembly_ai_key
 from agenticanimatronics.mutable_microphone_stream import MutableMicrophoneStream
 from agenticanimatronics.llm_speech_responder import LLMSpeechResponder
+from agenticanimatronics.idle_mode import IdleMode
 
 aai.settings.api_key = assembly_ai_key
 
@@ -61,13 +62,17 @@ class PirateAgent:
         self.is_paused = False
         self.keyboard_thread = None
         self.running = True
+        
+        # Idle mode
+        self.idle_mode = IdleMode()
+        self.in_idle_mode = False
 
     @staticmethod
     def on_open(session_opened: aai.RealtimeSessionOpened):
         print("Session ID:", session_opened.session_id)
 
     def on_data(self, transcript: aai.RealtimeTranscript):
-        if self.is_paused:
+        if self.is_paused or self.in_idle_mode:
             return
             
         if not self.image_analysis_thread:
@@ -113,13 +118,15 @@ class PirateAgent:
 
     def monitor_keyboard(self):
         """Monitor keyboard input for pause/resume commands"""
-        print("🏴‍☠️ Type 'p' + Enter to pause/resume, 'r' + Enter to restart, 'q' + Enter to quit")
+        print("🏴‍☠️ Type 'p' + Enter to pause/resume, 'i' + Enter for idle mode, 'r' + Enter to restart, 'q' + Enter to quit")
         
         while self.running:
             try:
                 command = input().strip().lower()
                 if command == 'p':
                     self.toggle_pause()
+                elif command == 'i':
+                    self.toggle_idle_mode()
                 elif command == 'r':
                     self.restart_dialog()
                 elif command == 'q':
@@ -127,7 +134,7 @@ class PirateAgent:
                     self.running = False
                     break
                 elif command == 'help':
-                    print("Commands: 'p' = pause/resume, 'q' = quit")
+                    print("Commands: 'p' = pause/resume, 'i' = idle mode, 'r' = restart, 'q' = quit")
             except (EOFError, KeyboardInterrupt):
                 print("\nQuitting...")
                 self.running = False
@@ -146,12 +153,38 @@ class PirateAgent:
             print("\n🏴‍☠️ Pirate RESUMED - Press 'p' to pause, 'q' to quit")
             self.microphone_stream.unmute()
 
+    def toggle_idle_mode(self):
+        """Toggle idle mode on/off"""
+        if self.in_idle_mode:
+            self.deactivate_idle_mode()
+        else:
+            self.activate_idle_mode()
+
+    def activate_idle_mode(self):
+        """Activate idle mode - pirate will randomly play audio files"""
+        self.in_idle_mode = True
+        self.is_paused = True  # Pause normal operation
+        self.microphone_stream.mute()
+        self.idle_mode.start()
+
+    def deactivate_idle_mode(self):
+        """Deactivate idle mode and return to normal operation"""
+        self.in_idle_mode = False
+        self.idle_mode.stop()
+        self.is_paused = False  # Resume normal operation
+        self.microphone_stream.unmute()
+        # Restart dialog to begin fresh conversation
+        self.restart_dialog()
+
     def restart_dialog(self):
-        print("Restarting Pirate Dialog")
+        print("🏴‍☠️ Restarting Pirate Dialog - Starting fresh conversation")
         self.user_description = ""
         self.image_analysis_thread = None
         self.queue = multiprocessing.Queue()
         self.user_transcript = []
+        # Clear conversation history in the speech responder
+        if hasattr(self.pirate_agent, 'conversation_history'):
+            self.pirate_agent.conversation_history = []
 
     def transcribe(self):
         """
@@ -197,6 +230,13 @@ class PirateAgent:
                 self.microphone_stream.close()
         except Exception as e:
             print(f"Error closing microphone: {e}")
+            
+        # Stop idle mode if active
+        try:
+            if self.in_idle_mode:
+                self.idle_mode.stop()
+        except Exception as e:
+            print(f"Error stopping idle mode: {e}")
             
         # Terminate audio player
         try:
