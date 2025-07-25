@@ -16,7 +16,7 @@ class PirateChatBotModule(dspy.Signature):
 
 
 class PirateChatBot(dspy.Module):
-    def __init__(self, model="gemini/gemini-2.5-flash-preview-04-17"):
+    def __init__(self, model="gemini/gemini-2.5-flash-lite"):
         super().__init__()
         dspy.settings.configure(lm=dspy.LM(model=model))
 

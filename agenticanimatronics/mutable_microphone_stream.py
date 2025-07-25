@@ -1,10 +1,10 @@
-from array import array
-from typing import Optional
-
-import pyaudio
 import noisereduce as nr
 import numpy as np
 import assemblyai as aai
+
+import pyaudio
+from array import array
+from typing import Optional
 
 
 class MutableMicrophoneStream:
@@ -23,7 +23,9 @@ class MutableMicrophoneStream:
         self.is_muted = False
         self.threshold = threshold
 
-        self._chunk_size = int(self.sample_rate * 0.1)
+        # Reduce chunk size to prevent buffer overflow
+        self._chunk_size = int(self.sample_rate * 0.05)  # 50ms instead of 100ms
+
         self._stream = self._pyaudio.open(
             format=pyaudio.paInt16,
             channels=1,
@@ -31,15 +33,19 @@ class MutableMicrophoneStream:
             input=True,
             frames_per_buffer=self._chunk_size,
             input_device_index=device_index,
+            # Add these parameters to help prevent overflow
+            start=False,  # Don't start immediately
+            stream_callback=None,
         )
 
+        # Start the stream after creation
+        self._stream.start_stream()
         self._open = True
 
     def __iter__(self):
         """
         Returns the iterator object.
         """
-
         return self
 
     def __next__(self):
@@ -51,31 +57,47 @@ class MutableMicrophoneStream:
 
         try:
             if not self.is_muted:
-                data = self._stream.read(self._chunk_size)
+                # Use exception_on_overflow=False to handle overflow gracefully
+                data = self._stream.read(self._chunk_size, exception_on_overflow=False)
+
+                # Check if we got the expected amount of data
+                expected_bytes = self._chunk_size * 2  # 2 bytes per sample for paInt16
+                if len(data) < expected_bytes:
+                    # Pad with zeros if we didn't get enough data
+                    data += b'\x00' * (expected_bytes - len(data))
+
                 data_chunk = array('h', data)
-                vol = max(data_chunk)
-                if (vol >= self.threshold):
+                vol = max(data_chunk) if data_chunk else 0
+
+                if vol >= self.threshold:
                     return data
                 else:
-                    return b'\x00' * self._chunk_size
+                    return b'\x00' * (self._chunk_size * 2)
             else:
-                _ = self._stream.read(self._chunk_size)
-                return b'\x00' * self._chunk_size
+                # Still read from stream when muted to prevent buffer overflow
+                _ = self._stream.read(self._chunk_size, exception_on_overflow=False)
+                return b'\x00' * (self._chunk_size * 2)
+
         except KeyboardInterrupt:
             raise StopIteration
+        except Exception as e:
+            print(f"Error reading from microphone: {e}")
+            # Return silence on error to keep the stream going
+            return b'\x00' * (self._chunk_size * 2)
 
     def close(self):
         """
         Closes the stream.
         """
-
         self._open = False
 
-        if self._stream.is_active():
-            self._stream.stop_stream()
+        if hasattr(self, '_stream') and self._stream:
+            if self._stream.is_active():
+                self._stream.stop_stream()
+            self._stream.close()
 
-        self._stream.close()
-        self._pyaudio.terminate()
+        if hasattr(self, '_pyaudio') and self._pyaudio:
+            self._pyaudio.terminate()
 
     def mute(self):
         """Mute the microphone (produce silence)"""
@@ -86,6 +108,14 @@ class MutableMicrophoneStream:
         """Unmute the microphone"""
         self.is_muted = False
         print("Microphone unmuted")
+
+    def __enter__(self):
+        """Context manager entry"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit"""
+        self.close()
 
     def toggle_mute(self):
         """Toggle between mute and unmute"""
