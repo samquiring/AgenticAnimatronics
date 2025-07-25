@@ -6,6 +6,7 @@ import glob
 import pygame
 from loguru import logger
 
+
 class IdleMode:
     def __init__(self, audio_folder="idle_audio"):
         """
@@ -134,7 +135,7 @@ class IdleMode:
                 time.sleep(0.1)
                 
         except Exception:
-            logger.exception(f"Error playing audio file {audio_file}")
+            logger.exception(f"Error playing audio file")
     
     def is_idle_active(self):
         """Check if idle mode is currently active"""

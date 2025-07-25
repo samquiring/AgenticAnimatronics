@@ -14,7 +14,11 @@ aai.settings.api_key = assembly_ai_key
 
 
 class PirateAgent:
-    def __init__(self, eleven_labs_voice_id="Myn1LuZgd2qPMOg9BNtC", image_prompt="Describe the person/people in this image"):
+    def __init__(
+            self,
+            eleven_labs_voice_id="Myn1LuZgd2qPMOg9BNtC",
+            image_prompt="Describe the person/people in this image"
+    ):
         try:
             self.transcriber = aai.RealtimeTranscriber(
                 sample_rate=16000,
@@ -90,7 +94,9 @@ class PirateAgent:
         if isinstance(transcript, aai.RealtimeFinalTranscript):
             # Create a thread
             if not self.pirate_agent_thread or not self.pirate_agent_thread.is_alive():
-                if self.image_analysis_thread and not self.image_analysis_thread.is_alive() and not self.user_description:
+                if (self.image_analysis_thread
+                        and not self.image_analysis_thread.is_alive()
+                        and not self.user_description):
                     try:
                         self.user_description = self.queue.get(timeout=5)
                     except Exception:
@@ -119,7 +125,9 @@ class PirateAgent:
 
     def monitor_keyboard(self):
         """Monitor keyboard input for pause/resume commands"""
-        logger.info("🏴‍☠️ Type 'p' + Enter to pause/resume, 'i' + Enter for idle mode, 'r' + Enter to restart, 'q' + Enter to quit")
+        logger.info("🏴‍☠️ Type 'p' + Enter to pause/resume, 'i' + Enter for idle mode, "
+                    "'r' + Enter to restart, 'q' + Enter to quit"
+                    )
         
         while self.running:
             try:
@@ -192,7 +200,9 @@ class PirateAgent:
         Start transcribing audio from the microphone for a specified duration.
         """
         try:
-            logger.info("🏴‍☠️ Starting Pirate Agent... Press 'p' to pause/resume, 'q' to quit, 'i' + Enter for idle mode, 'r' + Enter to restart")
+            logger.info("🏴‍☠️ Starting Pirate Agent... Press 'p' to pause/resume, 'q' to quit, "
+                        "'i' + Enter for idle mode, 'r' + Enter to restart"
+                        )
             
             # Start keyboard monitoring thread
             self.keyboard_thread = threading.Thread(target=self.monitor_keyboard, daemon=True)
@@ -283,4 +293,3 @@ def run_pirate_agent():
 
 if __name__ == "__main__":
     run_pirate_agent()
-

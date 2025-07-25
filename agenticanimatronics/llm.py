@@ -3,6 +3,7 @@ from litellm import completion
 from agenticanimatronics.image_creation import encode_image
 from loguru import logger
 
+
 class LLMHandler:
     def __init__(self, model_name="gemini/gemini-2.5-flash-lite"):
         self.model = model_name

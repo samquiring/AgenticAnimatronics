@@ -7,6 +7,7 @@ from array import array
 from typing import Optional
 from loguru import logger
 
+
 class MutableMicrophoneStream:
     def __init__(self, sample_rate: int = 44_100, device_index: Optional[int] = None, threshold: int = 500):
         """
