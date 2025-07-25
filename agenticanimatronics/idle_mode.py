@@ -4,7 +4,7 @@ import random
 import os
 import glob
 import pygame
-
+from loguru import logger
 
 class IdleMode:
     def __init__(self, audio_folder="idle_audio"):
@@ -23,8 +23,8 @@ class IdleMode:
         try:
             pygame.mixer.init()
             self.audio_available = True
-        except Exception as e:
-            print(f"Warning: Audio initialization failed: {e}")
+        except Exception:
+            logger.exception("Warning: Audio initialization failed")
             self.audio_available = False
         
         # Load available audio files
@@ -39,9 +39,9 @@ class IdleMode:
         audio_files = []
         
         if not os.path.exists(self.audio_folder):
-            print(f"Creating idle audio folder: {self.audio_folder}")
+            logger.info(f"Creating idle audio folder: {self.audio_folder}")
             os.makedirs(self.audio_folder, exist_ok=True)
-            print(f"📁 Add .wav, .mp3, or .ogg files to {self.audio_folder}/ for idle sounds")
+            logger.info(f"📁 Add .wav, .mp3, or .ogg files to {self.audio_folder}/ for idle sounds")
             return audio_files
         
         # Support common audio formats
@@ -52,22 +52,22 @@ class IdleMode:
             audio_files.extend(files)
         
         if audio_files:
-            print(f"🎵 Loaded {len(audio_files)} idle audio files")
+            logger.info(f"🎵 Loaded {len(audio_files)} idle audio files")
         else:
-            print(f"📁 No audio files found in {self.audio_folder}/")
-            print("Add .wav, .mp3, or .ogg files for idle sounds")
+            logger.info(f"📁 No audio files found in {self.audio_folder}/")
+            logger.info("Add .wav, .mp3, or .ogg files for idle sounds")
             
         return audio_files
     
     def start(self):
         """Start idle mode - begin random audio playback"""
         if not self.audio_available:
-            print("🏴‍☠️ Idle mode unavailable - audio system not initialized")
+            logger.info("🏴‍☠️ Idle mode unavailable - audio system not initialized")
             return
             
         if not self.audio_files:
-            print("🏴‍☠️ Idle mode started but no audio files available")
-            print(f"Add audio files to {self.audio_folder}/ folder")
+            logger.info("🏴‍☠️ Idle mode started but no audio files available")
+            logger.info(f"Add audio files to {self.audio_folder}/ folder")
         
         self.is_active = True
         self.running = True
@@ -76,8 +76,8 @@ class IdleMode:
         self.idle_thread = threading.Thread(target=self._idle_loop, daemon=True)
         self.idle_thread.start()
         
-        print("🏴‍☠️ IDLE MODE ACTIVATED - Pirate will randomly make sounds")
-        print("Press 'i' + Enter again to deactivate and restart dialog")
+        logger.info("🏴‍☠️ IDLE MODE ACTIVATED - Pirate will randomly make sounds")
+        logger.info("Press 'i' + Enter again to deactivate and restart dialog")
     
     def stop(self):
         """Stop idle mode"""
@@ -88,14 +88,15 @@ class IdleMode:
         if self.audio_available:
             try:
                 pygame.mixer.stop()
-            except:
+            except Exception:
+                logger.exception("Failed to stop currently playing audio")
                 pass
         
         # Wait for thread to finish
         if self.idle_thread and self.idle_thread.is_alive():
             self.idle_thread.join(timeout=1)
         
-        print("🏴‍☠️ IDLE MODE DEACTIVATED")
+        logger.info("🏴‍☠️ IDLE MODE DEACTIVATED")
     
     def _idle_loop(self):
         """Main idle loop that plays random audio at random intervals"""
@@ -122,7 +123,7 @@ class IdleMode:
             # Select random audio file
             audio_file = random.choice(self.audio_files)
             
-            print(f"🎵 Playing idle sound: {os.path.basename(audio_file)}")
+            logger.info(f"🎵 Playing idle sound: {os.path.basename(audio_file)}")
             
             # Load and play the audio
             pygame.mixer.music.load(audio_file)
@@ -132,23 +133,9 @@ class IdleMode:
             while pygame.mixer.music.get_busy() and self.running and self.is_active:
                 time.sleep(0.1)
                 
-        except Exception as e:
-            print(f"Error playing audio file {audio_file}: {e}")
+        except Exception:
+            logger.exception(f"Error playing audio file {audio_file}")
     
     def is_idle_active(self):
         """Check if idle mode is currently active"""
         return self.is_active
-    
-    def add_audio_file(self, file_path):
-        """Add a new audio file to the idle collection"""
-        if os.path.exists(file_path):
-            self.audio_files.append(file_path)
-            print(f"Added audio file: {os.path.basename(file_path)}")
-        else:
-            print(f"Audio file not found: {file_path}")
-    
-    def set_timing(self, min_interval=10, max_interval=60):
-        """Set the timing intervals for idle audio playback"""
-        self.min_interval = min_interval
-        self.max_interval = max_interval
-        print(f"Idle timing set: {min_interval}-{max_interval} seconds between sounds")

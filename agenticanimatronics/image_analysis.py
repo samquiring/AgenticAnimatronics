@@ -1,6 +1,4 @@
-from pathlib import Path
 
-import cv2
 
 from agenticanimatronics.image_creation import take_image
 from agenticanimatronics.llm import LLMHandler

@@ -5,7 +5,7 @@ import assemblyai as aai
 import pyaudio
 from array import array
 from typing import Optional
-
+from loguru import logger
 
 class MutableMicrophoneStream:
     def __init__(self, sample_rate: int = 44_100, device_index: Optional[int] = None, threshold: int = 500):
@@ -18,7 +18,7 @@ class MutableMicrophoneStream:
             threshold: The threshold input to send audio
         """
         self._pyaudio = pyaudio.PyAudio()
-        print(f"connecting to default device {self._pyaudio.get_default_input_device_info()}")
+        logger.info(f"connecting to default device {self._pyaudio.get_default_input_device_info()}")
         self.sample_rate = sample_rate
         self.is_muted = False
         self.threshold = threshold
@@ -80,8 +80,8 @@ class MutableMicrophoneStream:
 
         except KeyboardInterrupt:
             raise StopIteration
-        except Exception as e:
-            print(f"Error reading from microphone: {e}")
+        except Exception:
+            logger.exception("Error reading from microphone")
             # Return silence on error to keep the stream going
             return b'\x00' * (self._chunk_size * 2)
 
@@ -102,12 +102,12 @@ class MutableMicrophoneStream:
     def mute(self):
         """Mute the microphone (produce silence)"""
         self.is_muted = True
-        print("Microphone muted")
+        logger.info("Microphone muted")
 
     def unmute(self):
         """Unmute the microphone"""
         self.is_muted = False
-        print("Microphone unmuted")
+        logger.info("Microphone unmuted")
 
     def __enter__(self):
         """Context manager entry"""
@@ -152,16 +152,6 @@ class NoiseReducedMicrophoneStream:
             # Convert to float32 for noise reduction
             float_buffer = self.buffer.astype(np.float32) / 32768.0
 
-            # Calculate energy (RMS value) of the buffer
-            energy = np.sqrt(np.mean(float_buffer ** 2))
-
-            # # If energy is below threshold, return empty bytes
-            # if energy < self.energy_threshold:
-            #     # Clear buffer but keep a small overlap
-            #     overlap = 1024
-            #     self.buffer = self.buffer[-overlap:] if len(self.buffer) > overlap else np.array([])
-            #     return b''
-
             # Apply noise reduction
             # You can tweak these parameters to change the aggressiveness of the noise reduction
             reduced_noise = nr.reduce_noise(
@@ -187,12 +177,12 @@ class NoiseReducedMicrophoneStream:
     def mute(self):
         """Mute the microphone (produce silence)"""
         self.is_muted = True
-        print("Microphone muted")
+        logger.info("Microphone muted")
 
     def unmute(self):
         """Unmute the microphone"""
         self.is_muted = False
-        print("Microphone unmuted")
+        logger.info("Microphone unmuted")
 
     def toggle_mute(self):
         """Toggle between mute and unmute"""

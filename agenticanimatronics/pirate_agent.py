@@ -8,6 +8,7 @@ from agenticanimatronics.initializers import assembly_ai_key
 from agenticanimatronics.mutable_microphone_stream import MutableMicrophoneStream
 from agenticanimatronics.llm_speech_responder import LLMSpeechResponder
 from agenticanimatronics.idle_mode import IdleMode
+from loguru import logger
 
 aai.settings.api_key = assembly_ai_key
 
@@ -24,15 +25,15 @@ class PirateAgent:
                 end_utterance_silence_threshold=700,
                 disable_partial_transcripts=True
             )
-        except Exception as e:
-            print(f"Error initializing transcriber: {e}")
+        except Exception:
+            logger.exception("Error initializing transcriber")
             raise
             
         try:
             self.microphone_stream = MutableMicrophoneStream(sample_rate=16000)
-        except Exception as e:
-            print(f"Error initializing microphone: {e}")
-            print("Make sure your microphone is connected and permissions are granted")
+        except Exception:
+            logger.exception("Error initializing microphone")
+            logger.error("Make sure your microphone is connected and permissions are granted")
             raise
             
         self.user_transcript = []
@@ -41,16 +42,16 @@ class PirateAgent:
         # Initialize audio playback components
         try:
             self.audio_player = pyaudio.PyAudio()
-        except Exception as e:
-            print(f"Error initializing audio player: {e}")
+        except Exception:
+            logger.exception("Error initializing audio player")
             self.audio_player = None
             
         self.skipped_pirate_audio = True  # this ensures the last audio from the pirate isn't picked up
         
         try:
             self.pirate_agent = LLMSpeechResponder(eleven_labs_voice_id=eleven_labs_voice_id)
-        except Exception as e:
-            print(f"Error initializing speech responder: {e}")
+        except Exception:
+            logger.exception("Error initializing speech responder")
             raise
             
         self.image_analysis = ImageAnalysis(prompt=image_prompt)
@@ -69,7 +70,7 @@ class PirateAgent:
 
     @staticmethod
     def on_open(session_opened: aai.RealtimeSessionOpened):
-        print("Session ID:", session_opened.session_id)
+        logger.info("Session ID:", session_opened.session_id)
 
     def on_data(self, transcript: aai.RealtimeTranscript):
         if self.is_paused or self.in_idle_mode:
@@ -82,7 +83,7 @@ class PirateAgent:
                 daemon=True
             )
             self.image_analysis_thread.start()
-            print("Thread started")
+            logger.info("Thread started")
         if not transcript.text:
             return
 
@@ -92,8 +93,8 @@ class PirateAgent:
                 if self.image_analysis_thread and not self.image_analysis_thread.is_alive() and not self.user_description:
                     try:
                         self.user_description = self.queue.get(timeout=5)
-                    except:
-                        print("Warning: Image analysis timeout, proceeding without user description")
+                    except Exception:
+                        logger.exception("Image analysis timeout, proceeding without user description")
                         self.user_description = ""
                 self.pirate_agent_thread = threading.Thread(
                     target=self.pirate_agent.generate,
@@ -102,23 +103,23 @@ class PirateAgent:
                 )
                 self.pirate_agent_thread.start()
             else:
-                print("Pirate is still speaking")
-            print(f"User said: {transcript.text}")
+                logger.info("Pirate is still speaking")
+            logger.info(f"User said: {transcript.text}")
         else:
             # For partial transcripts
-            print(transcript.text, end="\r")
+            logger.info(transcript.text, end="\r")
 
     @staticmethod
     def on_error(error: aai.RealtimeError):
-        print("An error occurred:", error)
+        logger.error("An error occurred:", error)
 
     @staticmethod
     def on_close():
-        print("Closing Session")
+        logger.info("Closing Session")
 
     def monitor_keyboard(self):
         """Monitor keyboard input for pause/resume commands"""
-        print("🏴‍☠️ Type 'p' + Enter to pause/resume, 'i' + Enter for idle mode, 'r' + Enter to restart, 'q' + Enter to quit")
+        logger.info("🏴‍☠️ Type 'p' + Enter to pause/resume, 'i' + Enter for idle mode, 'r' + Enter to restart, 'q' + Enter to quit")
         
         while self.running:
             try:
@@ -130,27 +131,27 @@ class PirateAgent:
                 elif command == 'r':
                     self.restart_dialog()
                 elif command == 'q':
-                    print("\nQuitting...")
+                    logger.info("\nQuitting...")
                     self.running = False
                     break
                 elif command == 'help':
-                    print("Commands: 'p' = pause/resume, 'i' = idle mode, 'r' = restart, 'q' = quit")
+                    logger.info("Commands: 'p' = pause/resume, 'i' = idle mode, 'r' = restart, 'q' = quit")
             except (EOFError, KeyboardInterrupt):
-                print("\nQuitting...")
+                logger.info("\nQuitting...")
                 self.running = False
                 break
-            except Exception as e:
-                print(f"Input error: {e}")
+            except Exception:
+                logger.exception("Input error")
                 continue
 
     def toggle_pause(self):
         """Toggle pause/resume state"""
         self.is_paused = not self.is_paused
         if self.is_paused:
-            print("\n🏴‍☠️ Pirate PAUSED - Press 'p' to resume, 'q' to quit")
+            logger.info("\n🏴‍☠️ Pirate PAUSED - Press 'p' to resume, 'q' to quit")
             self.microphone_stream.mute()
         else:
-            print("\n🏴‍☠️ Pirate RESUMED - Press 'p' to pause, 'q' to quit")
+            logger.info("\n🏴‍☠️ Pirate RESUMED - Press 'p' to pause, 'q' to quit")
             self.microphone_stream.unmute()
 
     def toggle_idle_mode(self):
@@ -177,7 +178,7 @@ class PirateAgent:
         self.restart_dialog()
 
     def restart_dialog(self):
-        print("🏴‍☠️ Restarting Pirate Dialog - Starting fresh conversation")
+        logger.info("🏴‍☠️ Restarting Pirate Dialog - Starting fresh conversation")
         self.user_description = ""
         self.image_analysis_thread = None
         self.queue = multiprocessing.Queue()
@@ -191,7 +192,7 @@ class PirateAgent:
         Start transcribing audio from the microphone for a specified duration.
         """
         try:
-            print("🏴‍☠️ Starting Pirate Agent... Press 'p' to pause/resume, 'q' to quit")
+            logger.info("🏴‍☠️ Starting Pirate Agent... Press 'p' to pause/resume, 'q' to quit, 'i' + Enter for idle mode, 'r' + Enter to restart")
             
             # Start keyboard monitoring thread
             self.keyboard_thread = threading.Thread(target=self.monitor_keyboard, daemon=True)
@@ -204,17 +205,17 @@ class PirateAgent:
 
             return ' '.join(self.user_transcript)
         except KeyboardInterrupt:
-            print("\nShutting down gracefully...")
+            logger.exception("\nShutting down gracefully...")
             self.running = False
-        except Exception as e:
-            print(f"Error in transcribe: {e}")
+        except Exception:
+            logger.exception("Error in transcribe")
             self.running = False
 
     def cleanup(self):
         """
         Clean up resources when done.
         """
-        print("Cleaning up resources...")
+        logger.info("Cleaning up resources...")
         self.running = False
         
         # Stop transcriber
@@ -222,41 +223,41 @@ class PirateAgent:
             if hasattr(self, 'transcriber'):
                 self.transcriber.close()
         except Exception as e:
-            print(f"Error closing transcriber: {e}")
+            logger.info(f"Error closing transcriber: {e}")
         
         # Close microphone stream
         try:
             if hasattr(self, 'microphone_stream'):
                 self.microphone_stream.close()
-        except Exception as e:
-            print(f"Error closing microphone: {e}")
+        except Exception:
+            logger.exception("Error closing microphone")
             
         # Stop idle mode if active
         try:
             if self.in_idle_mode:
                 self.idle_mode.stop()
-        except Exception as e:
-            print(f"Error stopping idle mode: {e}")
+        except Exception:
+            logger.exception("Error stopping idle mode")
             
         # Terminate audio player
         try:
             if hasattr(self, 'audio_player') and self.audio_player:
                 self.audio_player.terminate()
-        except Exception as e:
-            print(f"Error terminating audio player: {e}")
+        except Exception:
+            logger.exception("Error terminating audio player")
             
         # Join threads
         try:
             if self.pirate_agent_thread and self.pirate_agent_thread.is_alive():
                 self.pirate_agent_thread.join(timeout=2)
-        except Exception as e:
-            print(f"Error joining pirate thread: {e}")
+        except Exception:
+            logger.exception("Error joining pirate thread")
             
         try:
             if self.image_analysis_thread and self.image_analysis_thread.is_alive():
                 self.image_analysis_thread.terminate()
-        except Exception as e:
-            print(f"Error terminating image analysis: {e}")
+        except Exception:
+            logger.exception("Error terminating image analysis")
 
 
 # Example usage
@@ -273,9 +274,9 @@ def run_pirate_agent():
             except KeyboardInterrupt:
                 break
                 
-        print(f"Final transcript: {result}")
-    except Exception as e:
-        print(f"Error running pirate agent: {e}")
+        logger.info(f"Final transcript: {result}")
+    except Exception:
+        logger.exception("Error running pirate agent")
     finally:
         agent.cleanup()
 

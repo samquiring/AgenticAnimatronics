@@ -1,7 +1,7 @@
 from litellm import completion
 
 from agenticanimatronics.image_creation import encode_image
-
+from loguru import logger
 
 class LLMHandler:
     def __init__(self, model_name="gemini/gemini-2.5-flash-lite"):
@@ -15,10 +15,10 @@ class LLMHandler:
             try:
                 response = completion(model=self.model, messages=messages)
                 out = response.choices[0].message.content
-                print(out)
+                logger.info(out)
                 return out
-            except Exception as e:
-                print(f"LLM API error (attempt {attempt + 1}/{max_retries}): {e}")
+            except Exception:
+                logger.exception(f"LLM API error (attempt {attempt + 1}/{max_retries})")
                 if attempt == max_retries - 1:
                     return "Arr, me brain be foggy today, matey! Try again later."
                 import time
@@ -49,10 +49,10 @@ class LLMHandler:
 
                 response = completion(model=self.model, messages=messages)
                 out = response.choices[0].message.content
-                print(out)
+                logger.info(out)
                 return out
             except Exception as e:
-                print(f"Image analysis error (attempt {attempt + 1}/{max_retries}): {e}")
+                logger.info(f"Image analysis error (attempt {attempt + 1}/{max_retries}): {e}")
                 if attempt == max_retries - 1:
                     return "A mysterious stranger stands before me"
                 import time
