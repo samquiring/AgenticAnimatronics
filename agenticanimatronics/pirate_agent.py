@@ -72,6 +72,11 @@ class PirateAgent:
         # Idle mode
         self.idle_mode = IdleMode()
         self.in_idle_mode = False
+        
+        # Photo update system
+        self.photo_update_thread = None
+        self.photo_update_interval = 30  # Update photo every 30 seconds
+        self.photo_update_running = False
 
     @staticmethod
     def on_open(session_opened: aai.RealtimeSessionOpened):
@@ -81,28 +86,16 @@ class PirateAgent:
         if self.is_paused or self.in_idle_mode:
             return
             
-        if not self.image_analysis_thread:
-            self.image_analysis_thread = multiprocessing.Process(
-                target=self.image_analysis.take_and_analyse_image,
-                args=("", self.queue),
-                daemon=True
-            )
-            self.image_analysis_thread.start()
-            logger.info("Thread started")
+        # Start photo update system if not already running
+        if not self.photo_update_running:
+            self.start_photo_updates()
+            
         if not transcript.text:
             return
 
         if isinstance(transcript, aai.RealtimeFinalTranscript):
-            # Create a thread
+            # Create a thread for pirate response
             if not self.pirate_agent_thread or not self.pirate_agent_thread.is_alive():
-                if (self.image_analysis_thread
-                        and not self.image_analysis_thread.is_alive()
-                        and not self.user_description):
-                    try:
-                        self.user_description = self.queue.get(timeout=5)
-                    except Exception:
-                        logger.exception("Image analysis timeout, proceeding without user description")
-                        self.user_description = ""
                 self.pirate_agent_thread = threading.Thread(
                     target=self.pirate_agent.generate,
                     args=(self.user_description, transcript.text),  # Function arguments
@@ -186,6 +179,78 @@ class PirateAgent:
         # Restart dialog to begin fresh conversation
         self.restart_dialog()
 
+    def start_photo_updates(self):
+        """Start the periodic photo update system"""
+        if self.photo_update_running:
+            return
+            
+        self.photo_update_running = True
+        self.photo_update_thread = threading.Thread(target=self._photo_update_loop, daemon=True)
+        self.photo_update_thread.start()
+        logger.info(f"📸 Started photo updates every {self.photo_update_interval} seconds")
+
+    def stop_photo_updates(self):
+        """Stop the periodic photo update system"""
+        self.photo_update_running = False
+        if self.photo_update_thread and self.photo_update_thread.is_alive():
+            self.photo_update_thread.join(timeout=2)
+        logger.info("📸 Stopped photo updates")
+
+    def _photo_update_loop(self):
+        """Background loop that regularly takes photos and updates user description"""
+        import time
+        
+        # Take initial photo
+        self._update_user_photo()
+        
+        while self.photo_update_running and self.running:
+            # Sleep in small chunks so we can respond to stop requests
+            slept = 0
+            while slept < self.photo_update_interval and self.photo_update_running and self.running:
+                time.sleep(1)
+                slept += 1
+            
+            # Take another photo if still running and not in idle mode
+            if self.photo_update_running and self.running and not self.in_idle_mode:
+                self._update_user_photo()
+
+    def _update_user_photo(self):
+        """Take a photo and update the user description"""
+        try:
+            logger.debug("📸 Taking updated photo for user description")
+            
+            # Create a new queue for this photo update
+            photo_queue = multiprocessing.Queue()
+            
+            # Start image analysis process
+            photo_process = multiprocessing.Process(
+                target=self.image_analysis.take_and_analyse_image,
+                args=("", photo_queue),
+                daemon=True
+            )
+            photo_process.start()
+            
+            # Wait for result with timeout
+            try:
+                new_description = photo_queue.get(timeout=10)
+                self.user_description = new_description
+                logger.info(f"📸 Updated user description: {new_description[:50]}...")
+            except Exception as e:
+                logger.warning(f"📸 Photo update failed {e} - keeping previous description")
+            
+            # Clean up process
+            if photo_process.is_alive():
+                photo_process.terminate()
+                photo_process.join(timeout=1)
+                
+        except Exception:
+            logger.exception("Error updating user photo")
+
+    def set_photo_update_interval(self, seconds):
+        """Set the interval for photo updates"""
+        self.photo_update_interval = max(10, seconds)  # Minimum 10 seconds
+        logger.info(f"📸 Photo update interval set to {self.photo_update_interval} seconds")
+
     def restart_dialog(self):
         logger.info("🏴‍☠️ Restarting Pirate Dialog - Starting fresh conversation")
         self.user_description = ""
@@ -249,6 +314,12 @@ class PirateAgent:
                 self.idle_mode.stop()
         except Exception:
             logger.exception("Error stopping idle mode")
+            
+        # Stop photo updates
+        try:
+            self.stop_photo_updates()
+        except Exception:
+            logger.exception("Error stopping photo updates")
             
         # Terminate audio player
         try:

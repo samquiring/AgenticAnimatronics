@@ -58,7 +58,7 @@ def dual_discord_sink(logs_webhook_url, alerts_webhook_url):
         try:
             requests.post(logs_webhook_url, json=logs_payload)
         except Exception:
-            logger.exception(f"Failed to upload to discord server")
+            logger.exception("Failed to upload to discord server")
             pass
 
         # Send alert to alerts channel if it's a warning/error
@@ -71,7 +71,7 @@ def dual_discord_sink(logs_webhook_url, alerts_webhook_url):
             try:
                 requests.post(alerts_webhook_url, json=alert_payload)
             except Exception:
-                logger.exception(f"Failed to upload to alert discord server")
+                logger.exception("Failed to upload to alert discord server")
                 pass
 
     return sink_function

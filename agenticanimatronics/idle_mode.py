@@ -135,7 +135,7 @@ class IdleMode:
                 time.sleep(0.1)
                 
         except Exception:
-            logger.exception(f"Error playing audio file")
+            logger.exception("Error playing audio file")
     
     def is_idle_active(self):
         """Check if idle mode is currently active"""
