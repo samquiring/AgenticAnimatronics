@@ -3,8 +3,9 @@ import threading
 import pyaudio
 import assemblyai as aai
 
+from agenticanimatronics.discord_handler import dual_discord_sink
 from agenticanimatronics.image_analysis import ImageAnalysis
-from agenticanimatronics.initializers import assembly_ai_key
+from agenticanimatronics.initializers import assembly_ai_key, logs_webhook, alerts_webhook
 from agenticanimatronics.mutable_microphone_stream import MutableMicrophoneStream
 from agenticanimatronics.llm_speech_responder import LLMSpeechResponder
 from agenticanimatronics.idle_mode import IdleMode
@@ -109,7 +110,7 @@ class PirateAgent:
                 )
                 self.pirate_agent_thread.start()
             else:
-                logger.info("Pirate is still speaking")
+                logger.debug("Pirate is still speaking")
             logger.info(f"User said: {transcript.text}")
         else:
             # For partial transcripts
@@ -272,6 +273,10 @@ class PirateAgent:
 
 # Example usage
 def run_pirate_agent():
+    logger.add(
+        dual_discord_sink(logs_webhook, alerts_webhook),
+        level="INFO"
+    )
     agent = PirateAgent()
     try:
         result = agent.transcribe()

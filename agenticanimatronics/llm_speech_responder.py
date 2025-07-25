@@ -29,7 +29,7 @@ class LLMSpeechResponder:
         """
         Convert text to speech using ElevenLabs API and return a stream of audio bytes.
         """
-        logger.info("Converting to speech")
+        logger.debug("Converting to speech")
         max_retries = 3
         
         for attempt in range(max_retries):
@@ -62,12 +62,12 @@ class LLMSpeechResponder:
         """
         Update the conversation history with the user's input and the assistant's response.
         """
-        logger.info("Updating conversational history")
+        logger.debug("Updating conversational history")
         self.conversation_history.append({"role": "user", "content": user_response})
         self.conversation_history.append({"role": "assistant", "content": assistant_response})
 
     def generate(self, user_description: str, user_response: str):
-        logger.info(f"Generating response for user input: {user_response}")
+        logger.debug(f"Generating response for user input: {user_response}")
 
         try:
             start = time.time()
@@ -78,7 +78,7 @@ class LLMSpeechResponder:
                 user_description=user_description,
             )
             end = time.time()
-            logger.info(f"Pirate response took {end-start} seconds")
+            logger.debug(f"Pirate response took {end-start} seconds")
             logger.info(f"Pirate responds: {pirate_response}")
 
             # Convert the response to speech and get the audio stream
